@@ -1,0 +1,183 @@
+package com.epam;
+
+import com.epam.api.GpsNavigator;
+import com.epam.api.Path;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * This class app demonstrates how your implementation of {@link com.epam.api.GpsNavigator} is intended to be used.
+ */
+public class ExampleApp {
+
+    public static void main(String[] args) {
+//        final GpsNavigator navigator = new StubGpsNavigator();
+        final GpsNavigator navigator = new MyGpsNavigator();
+        navigator.readData("d:\\test\\road_map.txt");
+
+        final Path path = navigator.findPath("A", "C");
+        System.out.println(path);
+    }
+
+	/*
+    private static class StubGpsNavigator implements GpsNavigator {
+
+        @Override
+        public void readData(String filePath) {
+            // Read data from file.
+        }
+
+        @Override
+        public Path findPath(String pointA, String pointB) {
+            return new Path(Arrays.asList("A", "C", "D", "E"), 37);
+        }
+    }
+*/
+
+
+    public static class MyGpsNavigator implements GpsNavigator {
+
+        private static final String SPLIT_SYMBOL = " ";
+        private static final int START = 0;
+        private static final int END = 1;
+        private static final int LENGTH = 2;
+        private static final int COST = 3;
+
+        private List<String[]> sectionList = new ArrayList<>();
+
+        private class CurrentPath {
+            private List<String> strings;
+            private int totalCost;
+
+            public CurrentPath(List<String> strings, int totalCost) {
+                this.strings = strings;
+                this.totalCost = totalCost;
+            }
+        }
+
+        @Override
+        public void readData(String filePath) {
+            try {
+                FileInputStream fis = new FileInputStream(filePath);
+                BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+                String strLine;
+                while ((strLine = br.readLine()) != null) {
+                    String[] str = strLine.split(SPLIT_SYMBOL);
+                    sectionList.add(new String[]{str[0], str[1], str[2], str[3]});
+                }
+            } catch (IOException e) {
+                System.out.println("Ошибка");
+            }
+//            for (Section sectionList: sectionList){
+//                System.out.println(sectionList.toString());
+//            }
+        }
+
+        @Override
+        public Path findPath(String pointA, String pointB) {
+            String startPoint = pointA;
+            String endPoint = pointB;
+            List<CurrentPath> currentPathList = new ArrayList<>();
+            boolean isFound = false;
+            int length = 0;
+            int cost = 0;
+            int currentPathCost = 0;
+            List<String> pointList = new ArrayList<>();
+            for (String[] sections : sectionList) {
+                if (sections[START].equals(startPoint)) {
+                    if (sections[END].equals(endPoint)) {
+                        currentPathList.add(new CurrentPath(new ArrayList<String>() {
+                            {
+                                add(sections[START]);
+                                add(sections[END]);
+                            }
+                        }, Integer.parseInt(sections[LENGTH]) * Integer.parseInt(sections[COST])));
+                        continue;
+                    }
+                    pointList.add(sections[START]);
+                    String internalStartPoint = sections[END];
+                    pointList.add(internalStartPoint);
+                    while (true) {
+                        for (String[] internalSections : sectionList) {
+                            if (internalSections[START].equals(internalStartPoint)) {
+                                internalStartPoint = internalSections[END];
+                                pointList.add(internalStartPoint);
+                                length = Integer.parseInt(internalSections[LENGTH]);
+                                cost = Integer.parseInt(internalSections[COST]);
+                                currentPathCost += length * cost;
+                                isFound = true;
+                                break;
+                            } else {
+                                isFound = false;
+                            }
+                        }
+                        if (internalStartPoint.equals(endPoint)) {
+                            //found one way
+                            currentPathList.add(new CurrentPath(pointList, currentPathCost));
+                            break;
+                        }
+                        if (!isFound) {
+                            //no equals point
+                            pointList.clear();
+                            currentPathCost = 0;
+                            break;
+                        }
+                    }
+                } else {
+
+                }
+            }
+            Path path = null;
+            if (!currentPathList.isEmpty()) {
+                CurrentPath betterPath = currentPathList.get(0);
+                for (int i = 1; i < currentPathList.size(); i++) {
+                    CurrentPath currentPath = currentPathList.get(i);
+                    if (currentPath.totalCost < betterPath.totalCost) {
+                        betterPath = currentPath;
+                    }
+                }
+                path = new Path(betterPath.strings, betterPath.totalCost);
+            }
+            return path;
+//            for (int j = 0; j < sectionList.size(); j++) {
+//                if (sectionList.get(j)[0].equals(startPoint)) {
+//                    int length = 0;
+//                    int cost = 0;
+//                    int currentPathCost = 0;
+//                    pointList.clear();
+//                    pointList.add(startPoint);
+//                    do {
+//                        if (sectionList.get(ind)[0].equals(startPoint)) {
+//                            startPoint = sectionList.get(ind)[1];
+//                            pointList.add(startPoint);
+//                            length = Integer.parseInt(sectionList.get(ind)[2]);
+//                            cost = Integer.parseInt(sectionList.get(ind)[3]);
+//                            currentPathCost = currentPathCost + length * cost;
+//                            ind = 0;
+//                        } else {
+//                            ind++;
+//                            if (sectionList.size() < ind) {
+//                                break;
+//                            }
+//                        }
+//                    }
+//                    while (!startPoint.equals(endPoint));
+//                }
+//            }
+//            String[] betterPath = pathList.get(0);
+//            for (String[] pathString : pathList) {
+//                if (Integer.parseInt(pathString[1]) < Integer.parseInt(betterPath[1])) {
+//                    betterPath = pathString;
+//                }
+//            }
+//            List<String> lists = new ArrayList<>();
+//            lists.add(betterPath[0]);
+//            return new Path(lists, Integer.parseInt(betterPath[1]));
+        }
+    }
+}
